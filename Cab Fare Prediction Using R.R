@@ -1,6 +1,3 @@
-# Checking normality of multivariate data
-# https://campus.datacamp.com/courses/multivariate-probability-distributions-in-r/multivariate-normal-distribution?ex=10
-uniplot()
 # Cab Fare Prediction 
 rm(list = ls())
 setwd("C:/Users/admin/Documents/R files")
@@ -32,437 +29,283 @@ summary(test)
 head(train,5)
 head(test,5)
 
-# Exploratory Data Analysis
-# Chnaging the data types of variables
-df$dteday <- format(as.Date(df$dteday,format="%Y-%m-%d"), "%d")
+############# Exploratory Data Analysis #######################
+# Changing the data types of variables
+train$fare_amount = as.numeric(as.character(train$fare_amount))
+train$passenger_count=round(train$passenger_count)
 
-#########################################################################
-#          Visualizing teh data
-#########################################################################
-hist(df$casual)
-hist(df$registered)
-hist(df$cnt)
+### Removing values which are not within desired range(outlier) depending upon basic understanding of dataset.
 
-#library(ggplot2)
-# CNT according to Season
-ggplot(df, aes(fill=cnt, x=season)) +
-  geom_bar(position="dodge") + labs(title="cnt ~ season")
+# 1.Fare amount has a negative value, which doesn't make sense. A price amount cannot be -ve and also cannot be 0. So we will remove these fields.
+train[which(train$fare_amount < 1 ),]
+nrow(train[which(train$fare_amount < 1 ),])
+train = train[-which(train$fare_amount < 1 ),]
 
-# CNT according to holiday
-ggplot(df, aes(fill=cnt, x=holiday)) +
-  geom_bar(position="dodge") + labs(title="cnt ~ holiday")
+#2.Passenger_count variable
+for (i in seq(4,11,by=1)){
+  print(paste('passenger_count above ' ,i,nrow(train[which(train$passenger_count > i ),])))
+  }
+# so 20 observations of passenger_count is consistenly above from 6,7,8,9,10 passenger_counts, let's check them.
+train[which(train$passenger_count > 6 ),]
+# Also we need to see if there are any passenger_count==0
+train[which(train$passenger_count <1 ),]
+nrow(train[which(train$passenger_count <1 ),])
+# We will remove these 58 observations and 20 observation which are above 6 value because a cab cannot hold these number of passengers.
+train = train[-which(train$passenger_count < 1 ),]
+train = train[-which(train$passenger_count > 6),]
+# 3.Latitudes range from -90 to 90.Longitudes range from -180 to 180.Removing which does not satisfy these ranges
+print(paste('pickup_longitude above 180=',nrow(train[which(train$pickup_longitude >180 ),])))
+print(paste('pickup_longitude above -180=',nrow(train[which(train$pickup_longitude < -180 ),])))
+print(paste('pickup_latitude above 90=',nrow(train[which(train$pickup_latitude > 90 ),])))
+print(paste('pickup_latitude above -90=',nrow(train[which(train$pickup_latitude < -90 ),])))
+print(paste('dropoff_longitude above 180=',nrow(train[which(train$dropoff_longitude > 180 ),])))
+print(paste('dropoff_longitude above -180=',nrow(train[which(train$dropoff_longitude < -180 ),])))
+print(paste('dropoff_latitude above -90=',nrow(train[which(train$dropoff_latitude < -90 ),])))
+print(paste('dropoff_latitude above 90=',nrow(train[which(train$dropoff_latitude > 90 ),])))
+# There's only one outlier which is in variable pickup_latitude.So we will remove it with nan.
+# Also we will see if there are any values equal to 0.
+nrow(train[which(train$pickup_longitude == 0 ),])
+nrow(train[which(train$pickup_latitude == 0 ),])
+nrow(train[which(train$dropoff_longitude == 0 ),])
+nrow(train[which(train$pickup_latitude == 0 ),])
+# there are values which are equal to 0. we will remove them.
+train = train[-which(train$pickup_latitude > 90),]
+train = train[-which(train$pickup_longitude == 0),]
+train = train[-which(train$dropoff_longitude == 0),]
 
-# CNT according to season by yr
-ggplot(df, aes(fill=cnt, x=season)) +
-  geom_bar(position="dodge") + facet_wrap(~yr)+
-  labs(title="CNT according to season by yr")
+# Make a copy
+df=train
+# train=df
 
-# CNT according to season by workingday
-ggplot(df, aes(fill=cnt, x=season)) +
-  geom_bar(position="dodge") + facet_wrap(~workingday)+
-  labs(title="CNT according to season by workingday")
+############# Missing Value Analysis #############
+missing_val = data.frame(apply(train,2,function(x){sum(is.na(x))}))
+missing_val$Columns = row.names(missing_val)
+names(missing_val)[1] =  "Missing_percentage"
+missing_val$Missing_percentage = (missing_val$Missing_percentage/nrow(train)) * 100
+missing_val = missing_val[order(-missing_val$Missing_percentage),]
+row.names(missing_val) = NULL
+missing_val = missing_val[,c(2,1)]
+missing_val
 
-# CNT according to season by workingday
-ggplot(df, aes(fill=cnt, x=workingday)) +
-  geom_bar(position="dodge") + facet_wrap(~weekday)+
-  labs(title="CNT according to workingday by weekday")
-
-################################################################
-#               Outlier Analysis
-################################################################
-
-#  #We are skipping outliers analysis becoz we already have an Class Imbalance problem.
-
-#create Box-Plot for outlier analysis-
-library(ggplot2)    #Library for visualization-
-for(i in 1:length(num_var)){
-  assign(paste0("AB",i),ggplot(aes_string(x="cnt",y=(num_var[i])),d=df)+
-           geom_boxplot(outlier.color = "Red",outlier.shape = 18,outlier.size = 2,
-                        fill="Purple")+theme_get()+
-           stat_boxplot(geom = "errorbar",width=0.5)+
-           labs(x="Count of Bike",y=num_var[i])+
-           ggtitle("Boxplot of count of bikes with",cnames[i]))
+unique(train$passenger_count)
+unique(test$passenger_count)
+train[,'passenger_count'] = factor(train[,'passenger_count'], labels=(1:6))
+test[,'passenger_count'] = factor(test[,'passenger_count'], labels=(1:6))
+# 1.For Passenger_count:
+# Actual value = 1
+# Mode = 1
+# KNN = 1
+train$passenger_count[1000]
+train$passenger_count[1000] = NA
+getmode <- function(v) {
+  uniqv <- unique(v)
+  uniqv[which.max(tabulate(match(v, uniqv)))]
 }
 
-gridExtra::grid.arrange(AB1,AB2,AB3,ncol=3)
-gridExtra::grid.arrange(AB4,AB5,ncol=2)
+# Mode Method
+getmode(train$passenger_count)
+# We can't use mode method because data will be more biased towards passenger_count=1
 
-#Removing outlier by replacing with NA and then impute
-for(i in c('temp', 'atemp', 'hum', 'windspeed')){
-  print(i)
-  outv = df[,i][df[,i] %in% boxplot.stats(df[,i])$out]
-  print(length(outv))
-  df[,i][df[,i] %in% outv] = NA
-}
+# 2.For fare_amount:
+# Actual value = 18.1,
+# Mean = 15.117,
+# Median = 8.5,
+# KNN = 18.28
+sapply(train, sd, na.rm = TRUE)
+# fare_amount   pickup_datetime  pickup_longitude 
+# 435.968236       4635.700531          2.659050 
+# pickup_latitude dropoff_longitude  dropoff_latitude 
+# 2.613305          2.710835          2.632400 
+# passenger_count 
+# 1.266104
+train$fare_amount[1000]
+train$fare_amount[1000]= NA
 
-#checking all the missing values
-#library(DMwR)
-sum(is.na(df))
+# Mean Method
+mean(train$fare_amount, na.rm = T)
 
-df$hum[is.na(df$hum)] = mean(df$hum,na.rm = T)
+#Median Method
+median(train$fare_amount, na.rm = T)
 
-df$windspeed[is.na(df$windspeed)] = mean(df$windspeed, na.rm = T)
+# kNN Imputation
+train = knnImputation(train, k = 181)
+train$fare_amount[1000]
+train$passenger_count[1000]
+sapply(train, sd, na.rm = TRUE)
+# fare_amount   pickup_datetime  pickup_longitude 
+# 435.661952       4635.700531          2.659050 
+# pickup_latitude dropoff_longitude  dropoff_latitude 
+# 2.613305          2.710835          2.632400 
+# passenger_count 
+# 1.263859 
+sum(is.na(train))
+str(train)
+summary(train)
 
-#df = knnImputation(df, k=3)
+df1=train
+# train=df1
+#####################Outlier Analysis ##################
+# We Will do Outlier Analysis only on Fare_amount just for now and we will do outlier analysis after feature engineering laitudes and longitudes.
+# Boxplot for fare_amount
+pl1 = ggplot(train,aes(x = factor(passenger_count),y = fare_amount))
+pl1 + geom_boxplot(outlier.colour="red", fill = "grey" ,outlier.shape=18,outlier.size=1, notch=FALSE)+ylim(0,100)
 
-sum(is.na(df))
-################################################################
-#               Feacture Selection
-################################################################
+# Replace all outliers with NA and impute
+vals = train[,"fare_amount"] %in% boxplot.stats(train[,"fare_amount"])$out
+train[which(vals),"fare_amount"] = NA
 
-#Here we will use corrgram library to find corelation
+#lets check the NA's
+sum(is.na(train$fare_amount))
 
-##Correlation plot
-# library(corrgram)
-num_var = c('temp', 'atemp', 'hum', 'windspeed','casual','registered','cnt')
+#Imputing with KNN
+train = knnImputation(train,k=3)
 
-corrgram(df[,num_var],
-         order = F,  #we don't want to reorder
-         upper.panel=panel.pie,
-         lower.panel=panel.shade,
-         text.panel=panel.txt,
-         main = 'CORRELATION PLOT')
-#We can see var the highly corr related var in plot marked dark blue. 
-#Dark blue color means highly positive cor related
+# lets check the missing values
+sum(is.na(train$fare_amount))
+str(train)
 
-df = subset(df, select=-c(atemp,casual,registered))
+# df2=train
+train=df2
+################## Feature Engineering ##########################
+# 1.Feature Engineering for timestamp variable
+# we will derive new features from pickup_datetime variable
+# new features will be year,month,day_of_week,hour
+#Convert pickup_datetime from factor to date time
+train$pickup_date = as.Date(as.character(train$pickup_datetime))
+train$pickup_weekday = as.factor(format(train$pickup_date,"%u"))# Monday = 1
+train$pickup_mnth = as.factor(format(train$pickup_date,"%m"))
+train$pickup_yr = as.factor(format(train$pickup_date,"%Y"))
+pickup_time = strptime(train$pickup_datetime,"%Y-%m-%d %H:%M:%S")
+train$pickup_hour = as.factor(format(pickup_time,"%H"))
 
-# #Checking dependency among different categorical variables
-cat_var = c('dteday','season', 'yr', 'mnth', 'holiday', 'weekday', 'workingday','weathersit')
-cat_df = df[,cat_var]
+#Add same features to test set
+test$pickup_date = as.Date(as.character(test$pickup_datetime))
+test$pickup_weekday = as.factor(format(test$pickup_date,"%u"))# Monday = 1
+test$pickup_mnth = as.factor(format(test$pickup_date,"%m"))
+test$pickup_yr = as.factor(format(test$pickup_date,"%Y"))
+pickup_time = strptime(test$pickup_datetime,"%Y-%m-%d %H:%M:%S")
+test$pickup_hour = as.factor(format(pickup_time,"%H"))
 
-for (i in cat_var){
-  for (j in cat_var){
-    print(i)
-    print(j)
-    print(chisq.test(table(cat_df[,i], cat_df[,j]))$p.value)
+# Now we will use month,weekday,hour to derive new features like sessions in a day,seasons in a year,week:weekend/weekday
+f = function(x){
+  if ((x >=5)& (x <= 11)){
+    return ('morning')
+  }
+  if ((x >=12) & (x <= 16)){
+    return ('afternoon')
+  }
+  if ((x >=17) & (x <= 20)){
+    return ('evening')
+  }
+  if ((x >=21) & (x <= 23)){
+    return ('night (PM)')
+  }
+  if ((x >=0) & (x <= 4)){
+    return ('night (AM)')
   }
 }
-
-#anova test
-
-anova_season =(lm(cnt ~ season, data = df))
-summary(anova_season)
-
-anova_year =(lm(cnt ~ yr, data = df))
-summary(anova_year)
-
-anova_month =(lm(cnt ~ mnth, data = df))
-summary(anova_month)
-
-anova_holiday =(lm(cnt ~ holiday, data = df))
-summary(anova_holiday)
-
-anova_weekday =(lm(cnt ~ weekday, data = df))
-summary(anova_weekday)
-
-anova_workingday =(lm(cnt ~ workingday, data = df))
-summary(anova_workingday)
-
-anova_weathersit =(lm(cnt ~ weathersit, data = df))
-summary(anova_weathersit)
-
-anova_season =(lm(cnt ~ dteday, data = df))
-summary(anova_season)
-
-
-################################################
-# #check multicollearity
-################################################
-# #Linear Regression
-# library(usdm)
-
-vif(df)
-#vifcor(df[,c(7,8,9)])
-
-df = subset(df, select=-c(holiday, workingday,dteday))
-#dteday
-
-####################################
-## Feature Scaling
-####################################
-#min(df$cnt) ---->  22
-#max(df$cnt) ---->  8714
-hist(df$cnt)
-colnames(df)
-
-# #Normalization of cnt
-#df$total_cnt = (df$cnt - min(df$cnt)) / (max(df$cnt) - min(df$cnt))
-
-################################################################
-#               Sampling of Data
-################################################################
-
-#sampling
-set.seed(12345)
-t_index = sample(1:nrow(df), 0.8*nrow(df))
-train = df[t_index,] 
-test = df[-t_index,]
-
-
-
-#Removing All the custom variable from memory
-#library(DataCombine)
-rmExcept(c("test","train","original_data",'df'))
-
-#library(caret)
-
-#mape
-mape = function(actual, predict){
-  mean(abs((actual-predict)/actual))*100
+# 2.Calculate the distance travelled using longitude and latitude
+deg_to_rad = function(deg){
+  (deg * pi) / 180
 }
-
-###########################################
-# # # ??? Linear Regression
-# ########################################
-#
-##Linear regression
-dumy = dummyVars(~., df)
-dummy_df = data.frame(predict(dumy, df))
-
-set.seed(101)
-dum_index = sample(1:nrow(dummy_df), 0.8*nrow(dummy_df))
-dum_train_df = dummy_df[dum_index,]
-dum_test_df = dummy_df[-dum_index,]
-
-#Linear model
-lr_model = lm(cnt ~. , data = dum_train_df)
-summary(lr_model)
-
-#predictions on Train data set
-LR_predict_train = predict(lr_model, dum_train_df[,-32])
-plot(dum_train_df$cnt, LR_predict_train,
-     xlab = 'Actual values',
-     ylab = 'Predicted values',
-     main = 'LR model')
-
-#evaluation
-postResample(LR_predict_train, dum_train_df$cnt)#R-sq = 0.85
-mape(dum_train_df$cnt, LR_predict_train)
-
-
-#predictions on test
-LR_predict_test = predict(lr_model, dum_test_df[,-32])
-plot(dum_test_df$cnt, LR_predict_test,
-     xlab = 'Actual values',
-     ylab = 'Predicted values',
-     main = 'LR model')
-
-#evaluation
-postResample(LR_predict_test, dum_test_df$cnt)#R-sq = 0.85
-mape(dum_test_df$cnt, LR_predict_test)
-
-
-# ###########################################
-# # # # Decision Tree
-# # ########################################
-#
-##Decison tree
-
-# library(rpart.plot)
-# library(rpart)
-
-set.seed(121)
-#model
-dt_model = rpart(cnt~. , data = train, method = "anova")
-summary(dt_model)
-plt = rpart.plot(dt_model, type = 5, digits = 2, fallen.leaves = TRUE)
-
-#predictions on train
-DT_Predict_train = predict(dt_model, train[,-9])
-plot(train$cnt, DT_Predict_train,
-     xlab = 'Actual values',
-     ylab = 'Predicted values',
-     main = 'DT model')
-
-#evaluation
-postResample(DT_Predict_train, train$cnt)
-mape(train$cnt, DT_Predict_train)
-
-#predictions on test
-DT_Predict_test = predict(dt_model, test[,-9])
-plot(test$cnt, DT_Predict_test,
-     xlab = 'Actual values',
-     ylab = 'Predicted values',
-     main = 'DT model')
-
-#evaluation
-postResample(DT_Predict_test, test$cnt)
-mape(test$cnt, DT_Predict_test)
-
-
-# ###########################################
-# # # # ??? Random Forest
-# # ########################################
-#
-##Random forest
-#library(randomForest)
-#library(inTrees)
-set.seed(101)
-#model
-rf_model = randomForest(cnt ~. , train, importance = TRUE, ntree = 500)
-rf_model
-
-#error plotting
-plot(rf_model)
-
-#Variable Importance plot
-varImpPlot(rf_model)
-
-#Plotting predict train data using RF model
-RF_predict_train = predict(rf_model, train[,-9])
-plot(train$cnt, RF_predict_train,
-     xlab = 'Actual values',
-     ylab = 'Predicted values',
-     main = 'RF model')
-
-#Train Result
-postResample(RF_predict_train, train$cnt)#R-sq = 0.89
-mape(train$cnt, RF_predict_train)
-
-
-#Plotting predict test data using RF model
-RF_predict_test = predict(rf_model, test[,-9])
-plot(test$cnt, RF_predict_test,
-     xlab = 'Actual values',
-     ylab = 'Predicted values',
-     main = 'RF model')
-
-#Test Result
-postResample(RF_predict_test, test$cnt)#R-sq = 0.89
-mape(test$cnt, RF_predict_test)
-
-
-
-#K-fold cross validation function
-kfold_train <- function(model){
-  x=trainControl(method = "cv",number = 10)
-  model= train(cnt ~.,data=train,metric="RMSE",method=model,trControl=x)
-  print(model)
-  return(model)
-}
-result <- function(model){
-  model = model
-  set.seed(101)
-  pred = predict(model, train[,-9])
-  print(postResample(pred, train$cnt))
-  print(mape(train$cnt, pred))
+haversine = function(long1,lat1,long2,lat2){
+  #long1rad = deg_to_rad(long1)
+  phi1 = deg_to_rad(lat1)
+  #long2rad = deg_to_rad(long2)
+  phi2 = deg_to_rad(lat2)
+  delphi = deg_to_rad(lat2 - lat1)
+  dellamda = deg_to_rad(long2 - long1)
   
-  print('Test Results____')
-  pred = predict(model,test[,-9])
-  print(postResample(pred, test$cnt))
-  print(mape(test$cnt, pred))
+  a = sin(delphi/2) * sin(delphi/2) + cos(phi1) * cos(phi2) * 
+    sin(dellamda/2) * sin(dellamda/2)
+  
+  c = 2 * atan2(sqrt(a),sqrt(1-a))
+  R = 6371e3
+  R * c / 1000 #1000 is used to convert to meters
 }
+# Using haversine formula to calculate distance fr both train and test
+train$dist = haversine(train$pickup_longitude,train$pickup_latitude,train$dropoff_longitude,train$dropoff_latitude)
+test$dist = haversine(test$pickup_longitude,test$pickup_latitude,test$dropoff_longitude,test$dropoff_latitude)
 
-############################################ We have commented KFOLD validation code and Hyper parameter tuning as it takes a lot time ##############
-# ###########################
-# #CV-Fold check
-# ###########################
-# library(doSNOW)
-# cl <- makeCluster(10) #clustering approach using doSNOW pkg
-# registerDoSNOW(cl)
+# We will remove the variables which were used to feature engineer new variables
+train = subset(train,select = -c(pickup_longitude,pickup_latitude,dropoff_longitude,dropoff_latitude,pickup_datetime,pickup_date,pickup_time))
+test = subset(test,select = -c(pickup_longitude,pickup_latitude,dropoff_longitude,dropoff_latitude,pickup_datetime,pickup_date,pickup_time))
 
-#Random Forest # R2 = 87
-# forest = kfold_train('rf')
-# result(forest)
-# 
-# stopCluster(cl)
-# 
-# #Linear Regression # R2 = 83
-# lm_model = kfold_train('lm')
-# result(lm_model)
-# 
-# #Decision Tree # R2 = 60
-# dtree = kfold_train('rpart')
-# result(dtree)
-# # 
-# #SVR # R2 = 86
-# svr_model = kfold_train('svmPoly')
-# result(svr_model)
-# # 
-# # # stopCluster(cl)
+# outlier Analysis on dist variable
+# Boxplot for fare_amount
+pl1 = ggplot(train,aes(x = factor(passenger_count),y = dist))
+pl1 + geom_boxplot(outlier.colour="red", fill = "grey" ,outlier.shape=18,outlier.size=1, notch=FALSE)+ylim(0,100)
 
+# Replace all outliers with NA and impute
+vals = train[,"dist"] %in% boxplot.stats(train[,"dist"])$out
+train[which(vals),"dist"] = NA
 
+#lets check the NA's
+sum(is.na(train$dist))
 
-###################################################################
-# #             Knowing the right hyper parameters tuning
-# # As this process will take a bit time so here i have commented the code 
-###################################################################
+#Imputing with KNN
+train = knnImputation(train,k=3)
 
-#Using doSNOW lib for segmenting the clustering onto task as a faster approch
-# library(doSNOW)
+# lets check the missing values
+sum(is.na(train$dist))
 
-# # #Best mtry  ======   found best as = 4 
-# cl <- makeCluster(6) #clustering approach using doSNOW pkg
-# registerDoSNOW(cl)
-# 
-# trControl <- trainControl(method = "cv",number = 10,search = "grid")
-# set.seed(101)
-# tuneGrid <- expand.grid(.mtry = c(2:8))
-# rf_mtry <- train(cnt~.,data = train,method = "rf",metric = "RMSE",
-#                  tuneGrid = tuneGrid,trControl = trControl,importance = TRUE,ntree = 800)
-# best_mtry <- rf_mtry$bestTune$mtry              
-# print(best_mtry)
+head(train)
+head(test)
+str(train)
+str(test)
+num_var=c('fare_amount','dist')
+cat_var=c('passenger_count','pickup_weekday','pickup_mnth','pickup_yr','pickup_hour')
 
-# # #Looking for best ntree  ====  found best as = 500
-# store_maxtrees <- list()
-# tuneGrid <- expand.grid(.mtry = best_mtry)
-# for (ntree in c(200, 300, 350, 400, 450, 500, 550, 600, 700,800, 1000)) {
-#   set.seed(101)
-#   rf_maxtrees <- train(cnt~.,data = train,method = "rf",metric = "RMSE",tuneGrid = tuneGrid,
-#                        trControl = trControl,importance = TRUE,ntree = ntree)
-#   key <- toString(ntree)
-#   store_maxtrees[[key]] <- rf_maxtrees
-# }
-# results_tree <- resamples(store_maxtrees)
-# summary(results_tree)
-# 
-# stopCluster(cl)
+df3=train
+# train=df3
 
+################Feature selection###################
 
+#Correlation analysis for numeric variables
+corrgram(train[,num_var],upper.panel=panel.pie, main = "Correlation Plot")
 
-# #############################################################
-# ## Final Model Random Forest
-# #############################################################
-# 
-final_model = randomForest(cnt ~. , train, importance = TRUE, ntree = 500)
-final_model
+#ANOVA for categorical variables with target numeric variable
 
-#error plotting
-plot(final_model)
+#aov_results = aov(fare_amount ~ passenger_count * pickup_hour * pickup_weekday,data = df)
+aov_results = aov(fare_amount ~ passenger_count + pickup_hour + pickup_weekday + pickup_mnth + pickup_yr,data = train)
 
-#Variable Importance plot
-varImpPlot(final_model)
+summary(aov_results)
 
-#Plotting predict train data using RF model
-Final_predict_train = predict(final_model, train[,-9])
-plot(train$cnt, Final_predict_train,
-     xlab = 'Actual values',
-     ylab = 'Predicted values',
-     main = 'RF model')
+# pickup_weekday has p value less than 0.05
+train = subset(df,select=-pickup_weekday)
 
-#Train Result
-postResample(Final_predict_train, train$cnt)#R-sq = 0.89
-mape(train$cnt, Final_predict_train)
+#remove from test set
+test = subset(test,select=-pickup_weekday)
+
+library(car)
+dev.off()
+par(mfrow=c(1,2))
+qqPlot(train$fare_amount)                             # qqPlot, it has a x values derived from gaussian distribution, if data is distributed normally then the sorted data points should lie very close to the solid reference line 
+truehist(train$fare_amount)                           # truehist() scales the counts to give an estimate of the probability density.
+lines(density(train$fare_amount))  # left skewed      # lines() and density() functions to overlay a density plot on histogram
+
+#################### Splitting train into train and validation subsets ###################
+set.seed(1000)
+tr.idx = createDataPartition(train$fare_amount,p=0.75,list = FALSE)
+train_data = train[tr.idx,]
+test_data = train[-tr.idx,]
+
+rmExcept(c("test","train","df",'df1','df2','df3','test_data','train_data'))
+###################Model Selection################
+#Error metric used to select model is RMSE
+
+#############Linear regression#################
+lm_model = lm(fare_amount ~.,data=train_data)
+
+summary(lm_model)
+
+plot(lm_model$fitted.values,rstandard(lm_model),main = "Residual plot",
+     xlab = "Predicted values of fare_amount",
+     ylab = "standardized residuals")
 
 
-#Plotting predict test data using RF model
-Final_predict_test = predict(final_model, test[,-9])
-plot(test$cnt, Final_predict_test,
-     xlab = 'Actual values',
-     ylab = 'Predicted values',
-     main = 'RF model')
+lm_predictions = predict(lm_model,test_data[,1:5])
 
-#Test Result
-postResample(Final_predict_test, test$cnt)#R-sq = 0.89
-mape(test$cnt, Final_predict_test)
+qplot(x = test_data[,6], y = lm_predictions, data = test_data, color = I("blue"), geom = "point")
 
-########################################################################
-## Saving the output
-rmExcept(c("final_model",'mape',"original_data",'df'))
-df$predict_cnt <-  round(predict(final_model, df[,-9]))
-original_data$predict_cnt <- df$predict_cnt
-write.csv(original_data, 'output_R.csv',row.names = F)
-write.csv(original_data[,c("dteday","weathersit","season","mnth",'temp',"hum","windspeed","cnt","predict_cnt")], 'output_R.csv',row.names = F)
-
-
+regr.eval(test_data[,6],lm_predictions
