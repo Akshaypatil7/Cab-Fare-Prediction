@@ -310,7 +310,7 @@ qplot(x = test_data[,6], y = lm_predictions, data = test_data, color = I("blue")
 
 regr.eval(test_data[,6],lm_predictions)
 #############Random forest#####################
-rf_model = randomForest(fare_amount ~.,data=train)
+rf_model = randomForest(fare_amount ~.,data=train_data)
 
 summary(rf_model)
 
@@ -320,7 +320,7 @@ qplot(x = test_data[,6], y = rf_predictions, data = test_data, color = I("blue")
 
 regr.eval(test_data[,6],rf_predictions)
 ############XGBOOST###########################
-train_data_matrix = as.matrix(sapply(train[-6],as.numeric))
+train_data_matrix = as.matrix(sapply(train_data[-6],as.numeric))
 test_data_data_matrix = as.matrix(sapply(test_data[-6],as.numeric))
 
 xgboost_model = xgboost(data = train_data_matrix,label = train$fare_amount,nrounds = 15,verbose = FALSE)
@@ -333,7 +333,7 @@ qplot(x = test_data[,6], y = xgb_predictions, data = test_data, color = I("blue"
 regr.eval(test_data[,6],xgb_predictions)
 #############Apply on test set####################
 ###############XGBoost#######################
-train_data_matrix2 = as.matrix(sapply(df[-6],as.numeric))
+train_data_matrix2 = as.matrix(sapply(train[-6],as.numeric))
 test_data_matrix2 = as.matrix(sapply(test,as.numeric))
 
 xgboost_model2 = xgboost(data = train_data_matrix2,label = df$fare_amount,nrounds = 15,verbose = FALSE)
