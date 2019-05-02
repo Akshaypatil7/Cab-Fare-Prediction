@@ -3,7 +3,7 @@ rm(list = ls())
 setwd("C:/Users/admin/Documents/R files")
 # #loading Libraries
 x = c("ggplot2", "corrgram", "DMwR", "usdm", "caret", "randomForest", "e1071",
-      "DataCombine", "doSNOW", "inTrees", "rpart.plot", "rpart")
+      "DataCombine", "doSNOW", "inTrees", "rpart.plot", "rpart",'MASS','xgboost','stats')
 #load Packages
 lapply(x, require, character.only = TRUE)
 rm(x)
@@ -308,4 +308,38 @@ lm_predictions = predict(lm_model,test_data[,1:5])
 
 qplot(x = test_data[,6], y = lm_predictions, data = test_data, color = I("blue"), geom = "point")
 
-regr.eval(test_data[,6],lm_predictions
+regr.eval(test_data[,6],lm_predictions)
+#############Random forest#####################
+rf_model = randomForest(fare_amount ~.,data=train)
+
+summary(rf_model)
+
+rf_predictions = predict(rf_model,test_data[,1:5])
+
+qplot(x = test_data[,6], y = rf_predictions, data = test_data, color = I("blue"), geom = "point")
+
+regr.eval(test_data[,6],rf_predictions)
+############XGBOOST###########################
+train_data_matrix = as.matrix(sapply(train[-6],as.numeric))
+test_data_data_matrix = as.matrix(sapply(test_data[-6],as.numeric))
+
+xgboost_model = xgboost(data = train_data_matrix,label = train$fare_amount,nrounds = 15,verbose = FALSE)
+
+summary(xgboost_model)
+xgb_predictions = predict(xgboost_model,test_data_data_matrix)
+
+qplot(x = test_data[,6], y = xgb_predictions, data = test_data, color = I("blue"), geom = "point")
+
+regr.eval(test_data[,6],xgb_predictions)
+#############Apply on test set####################
+###############XGBoost#######################
+train_data_matrix2 = as.matrix(sapply(df[-6],as.numeric))
+test_data_matrix2 = as.matrix(sapply(test,as.numeric))
+
+xgboost_model2 = xgboost(data = train_data_matrix2,label = df$fare_amount,nrounds = 15,verbose = FALSE)
+
+xgb_predictions2 = predict(xgboost_model2,test_data_matrix2)
+
+xgb_pred_results = data.frame(test_pickup_datetime,"predictions" = xgb_predictions2)
+write.csv(xgb_pred_results,"xgb_predictions_R.csv",row.names = FALSE)
+          
