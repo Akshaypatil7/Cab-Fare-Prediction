@@ -4,8 +4,9 @@
  2. Python code of project in ‘.ipynb format’: Cab Fare Prediction Using Python.ipynb 
  3. Project report: Cab Fare Prediction.pdf 
  4. Problem Statement.pdf 
- 5. Saved Model trained on entire training dataset: cab_fare_xgboost_model.rar
- 6. Predictions on test dataset in csv format:predictions_xgboost.csv
+ 5. Saved Model trained on entire training dataset from python: cab_fare_xgboost_model.rar
+ 6. Saved Model trained on entire training dataset from python:  	final_Xgboost_model_using_R.rar
+ 7. Predictions on test dataset in csv format:predictions_xgboost.csv
 
 ## Problem Statement 
  
