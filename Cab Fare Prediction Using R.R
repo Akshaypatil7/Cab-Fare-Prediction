@@ -1,4 +1,6 @@
-# Cab Fare Prediction 
+                                     
+                                           # Cab Fare Prediction 
+
 rm(list = ls())
 setwd("C:/Users/admin/Documents/R files")
 # #loading Libraries
@@ -20,7 +22,7 @@ rm(x)
 # loading datasets
 train = read.csv("train_cab.csv", header = T, na.strings = c(" ", "", "NA"))
 test = read.csv("test.csv")
-
+test_pickup_datetime = test["pickup_datetime"]
 # Structure of data
 str(train)
 str(test)
@@ -29,7 +31,7 @@ summary(test)
 head(train,5)
 head(test,5)
 
-############# Exploratory Data Analysis #######################
+#############                              Exploratory Data Analysis                    #######################
 # Changing the data types of variables
 train$fare_amount = as.numeric(as.character(train$fare_amount))
 train$passenger_count=round(train$passenger_count)
@@ -77,7 +79,7 @@ train = train[-which(train$dropoff_longitude == 0),]
 df=train
 # train=df
 
-############# Missing Value Analysis #############
+#############                        Missing Value Analysis                  #############
 missing_val = data.frame(apply(train,2,function(x){sum(is.na(x))}))
 missing_val$Columns = row.names(missing_val)
 names(missing_val)[1] =  "Missing_percentage"
@@ -144,7 +146,8 @@ summary(train)
 
 df1=train
 # train=df1
-#####################Outlier Analysis ##################
+#####################                        Outlier Analysis                 ##################
+
 # We Will do Outlier Analysis only on Fare_amount just for now and we will do outlier analysis after feature engineering laitudes and longitudes.
 # Boxplot for fare_amount
 pl1 = ggplot(train,aes(x = factor(passenger_count),y = fare_amount))
@@ -164,9 +167,9 @@ train = knnImputation(train,k=3)
 sum(is.na(train$fare_amount))
 str(train)
 
-# df2=train
-train=df2
-################## Feature Engineering ##########################
+df2=train
+# train=df2
+##################                   Feature Engineering                       ##########################
 # 1.Feature Engineering for timestamp variable
 # we will derive new features from pickup_datetime variable
 # new features will be year,month,day_of_week,hour
@@ -186,24 +189,29 @@ test$pickup_yr = as.factor(format(test$pickup_date,"%Y"))
 pickup_time = strptime(test$pickup_datetime,"%Y-%m-%d %H:%M:%S")
 test$pickup_hour = as.factor(format(pickup_time,"%H"))
 
+sum(is.na(train))# there was 1 'na' in pickup_datetime which created na's in above feature engineered variables.
+train = na.omit(train) # we will remove that 1 row of na's
+
+train = subset(train,select = -c(pickup_datetime,pickup_date))
+test = subset(test,select = -c(pickup_datetime,pickup_date))
 # Now we will use month,weekday,hour to derive new features like sessions in a day,seasons in a year,week:weekend/weekday
-f = function(x){
-  if ((x >=5)& (x <= 11)){
-    return ('morning')
-  }
-  if ((x >=12) & (x <= 16)){
-    return ('afternoon')
-  }
-  if ((x >=17) & (x <= 20)){
-    return ('evening')
-  }
-  if ((x >=21) & (x <= 23)){
-    return ('night (PM)')
-  }
-  if ((x >=0) & (x <= 4)){
-    return ('night (AM)')
-  }
-}
+# f = function(x){
+#   if ((x >=5)& (x <= 11)){
+#     return ('morning')
+#   }
+#   if ((x >=12) & (x <= 16)){
+#     return ('afternoon')
+#   }
+#   if ((x >=17) & (x <= 20)){
+#     return ('evening')
+#   }
+#   if ((x >=21) & (x <= 23)){
+#     return ('night (PM)')
+#   }
+#   if ((x >=0) & (x <= 4)){
+#     return ('night (AM)')
+#   }
+# }
 # 2.Calculate the distance travelled using longitude and latitude
 deg_to_rad = function(deg){
   (deg * pi) / 180
@@ -228,118 +236,150 @@ train$dist = haversine(train$pickup_longitude,train$pickup_latitude,train$dropof
 test$dist = haversine(test$pickup_longitude,test$pickup_latitude,test$dropoff_longitude,test$dropoff_latitude)
 
 # We will remove the variables which were used to feature engineer new variables
-train = subset(train,select = -c(pickup_longitude,pickup_latitude,dropoff_longitude,dropoff_latitude,pickup_datetime,pickup_date,pickup_time))
-test = subset(test,select = -c(pickup_longitude,pickup_latitude,dropoff_longitude,dropoff_latitude,pickup_datetime,pickup_date,pickup_time))
+train = subset(train,select = -c(pickup_longitude,pickup_latitude,dropoff_longitude,dropoff_latitude))
+test = subset(test,select = -c(pickup_longitude,pickup_latitude,dropoff_longitude,dropoff_latitude))
 
-# outlier Analysis on dist variable
-# Boxplot for fare_amount
-pl1 = ggplot(train,aes(x = factor(passenger_count),y = dist))
-pl1 + geom_boxplot(outlier.colour="red", fill = "grey" ,outlier.shape=18,outlier.size=1, notch=FALSE)+ylim(0,100)
-
-# Replace all outliers with NA and impute
-vals = train[,"dist"] %in% boxplot.stats(train[,"dist"])$out
-train[which(vals),"dist"] = NA
-
-#lets check the NA's
-sum(is.na(train$dist))
-
-#Imputing with KNN
-train = knnImputation(train,k=3)
-
-# lets check the missing values
-sum(is.na(train$dist))
-
-head(train)
-head(test)
 str(train)
-str(test)
-num_var=c('fare_amount','dist')
-cat_var=c('passenger_count','pickup_weekday','pickup_mnth','pickup_yr','pickup_hour')
+summary(train)
 
-df3=train
-# train=df3
+################                             Feature selection                 ###################
+numeric_index = sapply(train,is.numeric) #selecting only numeric
 
-################Feature selection###################
+numeric_data = train[,numeric_index]
 
+cnames = colnames(numeric_data)
 #Correlation analysis for numeric variables
-corrgram(train[,num_var],upper.panel=panel.pie, main = "Correlation Plot")
+corrgram(train[,numeric_index],upper.panel=panel.pie, main = "Correlation Plot")
 
 #ANOVA for categorical variables with target numeric variable
 
-#aov_results = aov(fare_amount ~ passenger_count * pickup_hour * pickup_weekday,data = df)
+#aov_results = aov(fare_amount ~ passenger_count * pickup_hour * pickup_weekday,data = train)
 aov_results = aov(fare_amount ~ passenger_count + pickup_hour + pickup_weekday + pickup_mnth + pickup_yr,data = train)
 
 summary(aov_results)
 
-# pickup_weekday has p value less than 0.05
-train = subset(df,select=-pickup_weekday)
+# pickup_weekdat has p value greater than 0.05 
+train = subset(train,select=-pickup_weekday)
 
 #remove from test set
 test = subset(test,select=-pickup_weekday)
 
+##################################             Feature Scaling         ################################################
+#Normality check
+# qqnorm(train$fare_amount)
+# histogram(train$fare_amount)
 library(car)
-dev.off()
+# dev.off()
 par(mfrow=c(1,2))
 qqPlot(train$fare_amount)                             # qqPlot, it has a x values derived from gaussian distribution, if data is distributed normally then the sorted data points should lie very close to the solid reference line 
 truehist(train$fare_amount)                           # truehist() scales the counts to give an estimate of the probability density.
-lines(density(train$fare_amount))  # left skewed      # lines() and density() functions to overlay a density plot on histogram
+lines(density(train$fare_amount))  # Right skewed      # lines() and density() functions to overlay a density plot on histogram
+
+#Normalisation
+
+for(i in cnames){
+  print(i)
+  train[,i] = (train[,i] - min(train[,i]))/
+    (max(train[,i] - min(train[,i])))
+}
+
+# #check multicollearity
+# library(usdm)
+# vif(train[,-1])
+# 
+# vifcor(train[,-1], th = 0.9)
 
 #################### Splitting train into train and validation subsets ###################
 set.seed(1000)
-tr.idx = createDataPartition(train$fare_amount,p=0.75,list = FALSE)
+tr.idx = createDataPartition(train$fare_amount,p=0.75,list = FALSE) # 75% in trainin and 25% in Validation Datasets
 train_data = train[tr.idx,]
 test_data = train[-tr.idx,]
 
-rmExcept(c("test","train","df",'df1','df2','df3','test_data','train_data'))
+rmExcept(c("test","train","df",'df1','df2','df3','test_data','train_data','test_pickup_datetime'))
 ###################Model Selection################
 #Error metric used to select model is RMSE
 
-#############Linear regression#################
+#############            Linear regression               #################
 lm_model = lm(fare_amount ~.,data=train_data)
 
 summary(lm_model)
-
+str(train_data)
 plot(lm_model$fitted.values,rstandard(lm_model),main = "Residual plot",
      xlab = "Predicted values of fare_amount",
      ylab = "standardized residuals")
 
 
-lm_predictions = predict(lm_model,test_data[,1:5])
+lm_predictions = predict(lm_model,test_data[,2:6])
 
-qplot(x = test_data[,6], y = lm_predictions, data = test_data, color = I("blue"), geom = "point")
+qplot(x = test_data[,1], y = lm_predictions, data = test_data, color = I("blue"), geom = "point")
 
-regr.eval(test_data[,6],lm_predictions)
-#############Random forest#####################
+regr.eval(test_data[,1],lm_predictions)
+# mae        mse       rmse       mape 
+# 0.16843089 0.04394952 0.20964140 0.57065814 
+
+
+#############                             Decision Tree            #####################
+
+Dt_model = rpart(fare_amount ~ ., data = train_data, method = "anova")
+
+summary(Dt_model)
+#Predict for new test cases
+predictions_DT = predict(Dt_model, test_data[,2:6])
+
+qplot(x = test_data[,1], y = predictions_DT, data = test_data, color = I("blue"), geom = "point")
+
+regr.eval(test_data[,1],predictions_DT)
+# mae        mse       rmse       mape 
+# 0.09056103 0.01525869 0.12352606 0.27871349 
+
+
+#############                             Random forest            #####################
 rf_model = randomForest(fare_amount ~.,data=train_data)
 
 summary(rf_model)
 
-rf_predictions = predict(rf_model,test_data[,1:5])
+rf_predictions = predict(rf_model,test_data[,2:6])
 
-qplot(x = test_data[,6], y = rf_predictions, data = test_data, color = I("blue"), geom = "point")
+qplot(x = test_data[,1], y = rf_predictions, data = test_data, color = I("blue"), geom = "point")
 
-regr.eval(test_data[,6],rf_predictions)
-############XGBOOST###########################
-train_data_matrix = as.matrix(sapply(train_data[-6],as.numeric))
-test_data_data_matrix = as.matrix(sapply(test_data[-6],as.numeric))
+regr.eval(test_data[,1],rf_predictions)
+# mae        mse       rmse       mape 
+# 0.09082194 0.01447692 0.12032008 0.29402024
 
-xgboost_model = xgboost(data = train_data_matrix,label = train$fare_amount,nrounds = 15,verbose = FALSE)
+############          Improving Accuracy by using Ensemble technique ---- XGBOOST             ###########################
+train_data_matrix = as.matrix(sapply(train_data[-1],as.numeric))
+test_data_data_matrix = as.matrix(sapply(test_data[-1],as.numeric))
+
+xgboost_model = xgboost(data = train_data_matrix,label = train_data$fare_amount,nrounds = 15,verbose = FALSE)
 
 summary(xgboost_model)
 xgb_predictions = predict(xgboost_model,test_data_data_matrix)
 
-qplot(x = test_data[,6], y = xgb_predictions, data = test_data, color = I("blue"), geom = "point")
+qplot(x = test_data[,1], y = xgb_predictions, data = test_data, color = I("blue"), geom = "point")
 
-regr.eval(test_data[,6],xgb_predictions)
-#############Apply on test set####################
-###############XGBoost#######################
-train_data_matrix2 = as.matrix(sapply(train[-6],as.numeric))
+regr.eval(test_data[,1],xgb_predictions)
+# mae        mse       rmse       mape 
+# 0.07716875 0.01150822 0.10727639 0.23118015 
+
+#############                         Finalizing and Saving Model for later use                         ####################
+# In this step we will train our model on whole training Dataset and save that model for later use
+train_data_matrix2 = as.matrix(sapply(train[-1],as.numeric))
 test_data_matrix2 = as.matrix(sapply(test,as.numeric))
 
-xgboost_model2 = xgboost(data = train_data_matrix2,label = df$fare_amount,nrounds = 15,verbose = FALSE)
+xgboost_model2 = xgboost(data = train_data_matrix2,label = train$fare_amount,nrounds = 15,verbose = FALSE)
 
-xgb_predictions2 = predict(xgboost_model2,test_data_matrix2)
+# Saving the trained model
+saveRDS(xgboost_model2, "./final_Xgboost_model_using_R.rds")
 
-xgb_pred_results = data.frame(test_pickup_datetime,"predictions" = xgb_predictions2)
+# loading the saved model
+super_model <- readRDS("./final_Xgboost_model_using_R.rds")
+print(super_model)
+
+# Lets now predict on test dataset
+xgb = predict(super_model,test_data_matrix2)
+
+xgb_pred = data.frame(test_pickup_datetime,"predictions" = xgb)
+
+# Now lets write(save) the predicted fare_amount in disk as .csv format 
 write.csv(xgb_pred_results,"xgb_predictions_R.csv",row.names = FALSE)
           
