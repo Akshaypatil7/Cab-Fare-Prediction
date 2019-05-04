@@ -49,4 +49,4 @@ b) Create standalone model on entire training dataset
 c) Save model for later use
 11. Python Code
 
--  Note:Python code is better coded than R as i was interested in Python more than R at that time and my current favourite language is Python.
+
