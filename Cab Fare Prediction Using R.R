@@ -381,5 +381,5 @@ xgb = predict(super_model,test_data_matrix2)
 xgb_pred = data.frame(test_pickup_datetime,"predictions" = xgb)
 
 # Now lets write(save) the predicted fare_amount in disk as .csv format 
-write.csv(xgb_pred_results,"xgb_predictions_R.csv",row.names = FALSE)
+write.csv(xgb_pred,"xgb_predictions_R.csv",row.names = FALSE)
           
