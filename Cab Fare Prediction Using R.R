@@ -277,11 +277,9 @@ lines(density(train$fare_amount))  # Right skewed      # lines() and density() f
 
 #Normalisation
 
-for(i in cnames){
-  print(i)
-  train[,i] = (train[,i] - min(train[,i]))/
-    (max(train[,i] - min(train[,i])))
-}
+print('dist')
+train[,'dist'] = (train[,'dist'] - min(train[,'dist']))/
+    (max(train[,'dist'] - min(train[,'dist'])))
 
 # #check multicollearity
 # library(usdm)
@@ -315,7 +313,7 @@ qplot(x = test_data[,1], y = lm_predictions, data = test_data, color = I("blue")
 
 regr.eval(test_data[,1],lm_predictions)
 # mae        mse       rmse       mape 
-# 0.16843089 0.04394952 0.20964140 0.57065814 
+# 3.5303114 19.3079726  4.3940838  0.4510407  
 
 
 #############                             Decision Tree            #####################
@@ -329,8 +327,8 @@ predictions_DT = predict(Dt_model, test_data[,2:6])
 qplot(x = test_data[,1], y = predictions_DT, data = test_data, color = I("blue"), geom = "point")
 
 regr.eval(test_data[,1],predictions_DT)
-# mae        mse       rmse       mape 
-# 0.09056103 0.01525869 0.12352606 0.27871349 
+# mae       mse      rmse      mape 
+# 1.8981592 6.7034713 2.5891063 0.2241461 
 
 
 #############                             Random forest            #####################
@@ -343,8 +341,8 @@ rf_predictions = predict(rf_model,test_data[,2:6])
 qplot(x = test_data[,1], y = rf_predictions, data = test_data, color = I("blue"), geom = "point")
 
 regr.eval(test_data[,1],rf_predictions)
-# mae        mse       rmse       mape 
-# 0.09082194 0.01447692 0.12032008 0.29402024
+# mae       mse      rmse      mape 
+# 1.9053850 6.3682283 2.5235349 0.2335395
 
 ############          Improving Accuracy by using Ensemble technique ---- XGBOOST             ###########################
 train_data_matrix = as.matrix(sapply(train_data[-1],as.numeric))
@@ -358,8 +356,8 @@ xgb_predictions = predict(xgboost_model,test_data_data_matrix)
 qplot(x = test_data[,1], y = xgb_predictions, data = test_data, color = I("blue"), geom = "point")
 
 regr.eval(test_data[,1],xgb_predictions)
-# mae        mse       rmse       mape 
-# 0.07716875 0.01150822 0.10727639 0.23118015 
+# mae       mse      rmse      mape 
+# 1.6183415 5.1096465 2.2604527 0.1861947  
 
 #############                         Finalizing and Saving Model for later use                         ####################
 # In this step we will train our model on whole training Dataset and save that model for later use
